@@ -45,6 +45,12 @@ end
     return lml, α, Gaussian(mf, Pf)
 end
 
+@inline function step_decorrelate(model, x::Gaussian, y::AV{<:Real})
+    mp, Pp = predict(x.m, x.P, model.A, model.a, model.Q)
+    mf, Pf, lml, α = update_decorrelate(mp, Pp, model.H, model.h, model.Σ, y)
+    return lml, α, Gaussian(mf, Pf)
+end
+
 @inline function update_decorrelate(mp, Pp, H::AM, h::AV, Σ::AM, y::AV{<:Real})
     V = _compute_V(H, Pp)
     S_1 = V * H' + Σ
@@ -204,18 +210,20 @@ end
 # High-level inference stuff that you really only want to have to write once...
 #
 
-pick_first(a, b) = a
-get_pb(::typeof(pick_first)) = Δ->(Δ, nothing)
+copy_first(a, b) = my_copy(a)
+get_pb(::typeof(copy_first)) = Δ->(my_copy(Δ), nothing)
 
-pick_last(a, b) = b
-get_pb(::typeof(pick_last)) = Δ->(nothing, Δ)
+copy_last(a, b) = my_copy(b)
+get_pb(::typeof(copy_last)) = Δ->(nothing, my_copy(Δ))
 
+my_copy(x) = copy(x)
+my_copy(::Nothing) = nothing
 
 for (foo, step_foo) in [
     (:correlate, :step_correlate),
     (:decorrelate, :step_decorrelate),
 ]
-    @eval function $foo(model::LGSSM, αs::AV{<:AV{<:Real}}, f=pick_first)
+    @eval function $foo(model::LGSSM, αs::AV{<:AV{<:Real}}, f=copy_first)
         @assert length(model) == length(αs)
 
         # Process first latent.
@@ -244,17 +252,17 @@ whiten(model::AbstractSSM, ys::AbstractVector) = last(decorrelate(model, ys))
 
 Stheno.logpdf(model::AbstractSSM, ys::AbstractVector) = first(decorrelate(model, ys))
 
-Base.filter(model::AbstractSSM, ys::AbstractVector) = decorrelate(model, ys, pick_last)
+Base.filter(model::AbstractSSM, ys::AbstractVector) = decorrelate(model, ys, copy_last)
 
 @adjoint function Base.filter(model::AbstractSSM, ys::AbstractVector)
-    return Zygote.pullback(decorrelate, model, ys, pick_last)
+    return Zygote.pullback(decorrelate, model, ys, copy_last)
 end
 
 # Resolve ambiguity with Base.
-Base.filter(model::AbstractSSM, ys::Vector) = decorrelate(model, ys, pick_last)
+Base.filter(model::AbstractSSM, ys::Vector) = decorrelate(model, ys, copy_last)
 
 @adjoint function Base.filter(model::AbstractSSM, ys::Vector)
-    return Zygote.pullback(decorrelate, model, ys, pick_last)
+    return Zygote.pullback(decorrelate, model, ys, copy_last)
 end
 
 

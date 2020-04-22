@@ -75,7 +75,7 @@ for (foo, step_foo, step_foo_pullback) in [
     (:decorrelate, :step_decorrelate, :step_decorrelate_pullback),
 ]
     # Standard rrule a la ChainRulesCore.
-    @eval @adjoint function $foo(model::LGSSM, ys::AV{<:AV{<:Real}}, f=pick_first)
+    @eval @adjoint function $foo(model::LGSSM, ys::AV{<:AV{<:Real}}, f=copy_first)
 
         @assert length(model) == length(ys)
 

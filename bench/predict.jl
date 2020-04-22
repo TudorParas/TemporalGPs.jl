@@ -5,7 +5,7 @@ Pkg.instantiate()
 using BenchmarkTools, BlockDiagonals, DataFrames, DrWatson, FillArrays, Kronecker,
     LinearAlgebra, PGFPlotsX, Random, TemporalGPs
 
-using TemporalGPs: predict, predict_pullback, AV, AM
+using TemporalGPs: predict, predict_pullback, AV, AM, build_predict!
 
 const n_blas_threads = Sys.CPU_THREADS;
 LinearAlgebra.BLAS.set_num_threads(n_blas_threads);
@@ -118,28 +118,28 @@ wsave(
             :implementation =>[
                 (
                     name = "naive",
-                    predict = naive_predict,
+                    make_predict = (xs...) -> naive_predict,
                     predict_pullback = naive_predict_pullback,
                     dynamics_constructor = dense_dynamics_constructor,
                 ),
                 (
                     name = "dense",
-                    predict = predict,
+                    make_predict = (mf, Pf, A, a, Q) -> build_predict!(mf, Pf, A, a, Q),
                     predict_pullback = predict_pullback,
                     dynamics_constructor = dense_dynamics_constructor,
                 ),
-                (
-                    name = "block-diagonal",
-                    predict = predict,
-                    predict_pullback = predict_pullback,
-                    dynamics_constructor = block_diagonal_dynamics_constructor,
-                ),
-                (
-                    name = "block-diagonal-kronecker",
-                    predict = predict,
-                    predict_pullback = predict_pullback,
-                    dynamics_constructor = block_diagonal_kronecker_dynamics_constructor,
-                ),
+                # (
+                #     name = "block-diagonal",
+                #     predict = predict,
+                #     predict_pullback = predict_pullback,
+                #     dynamics_constructor = block_diagonal_dynamics_constructor,
+                # ),
+                # (
+                #     name = "block-diagonal-kronecker",
+                #     predict = predict,
+                #     predict_pullback = predict_pullback,
+                #     dynamics_constructor = block_diagonal_kronecker_dynamics_constructor,
+                # ),
             ],
 
             # Latent dimensionality for each observation.
@@ -148,11 +148,12 @@ wsave(
 
             # Number of observations per time step.
             # :n_obs => [2, 5, 10, 25, 50, 100],
-            :n_obs => [200, 300, 400, 500],
+            # :n_obs => [200, 300, 400, 500],
+            :n_obs => [2, 5, 10],
 
             # Number of blocks.
             # :n_blocks => [1, 2, 3, 4, 5],
-            :n_blocks => [2, 3, 4],
+            :n_blocks => [2],
         ),
     ),
 )
@@ -186,7 +187,8 @@ let
         _, back = impl.predict_pullback(mf, Pf, A, a, Q)
 
         # Benchmark evaluation, pullback generation, and pullback evaluation.
-        predict_results = @benchmark $(impl.predict)($mf, $Pf, $A, $a, $Q)
+        impl_predict! = impl.make_predict(mf, Pf, A, a, Q)
+        predict_results = @benchmark $(impl_predict!)($mf, $Pf, $A, $a, $Q)
         generate_pullback_results =
             (@benchmark $(impl.predict_pullback)($mf, $Pf, $A, $a, $Q))
         pullback_results = @benchmark $back(($Δmp, $ΔPp))

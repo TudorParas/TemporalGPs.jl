@@ -14,23 +14,23 @@ Base.length(model::ScalarLGSSM) = length(model.model)
 dim_obs(model::ScalarLGSSM) = 1
 dim_latent(model::ScalarLGSSM) = dim_latent(model.model)
 
-pick_first_scal(a::SVector{1, <:Real}, b) = first(a)
-function get_pb(::typeof(pick_first_scal))
-    pullback_pick_first_scal(Δ) = (SVector(Δ), nothing)
-    pullback_pick_first_scal(::Nothing) = (nothing, nothing)
-    return pullback_pick_first_scal
+copy_first_scal(a::SVector{1, <:Real}, b) = first(a)
+function get_pb(::typeof(copy_first_scal))
+    pullback_copy_first_scal(Δ) = (SVector(Δ), nothing)
+    pullback_copy_first_scal(::Nothing) = (nothing, nothing)
+    return pullback_copy_first_scal
 end
 
 mean(model::ScalarLGSSM) = mean(model.model)
 cov(model::ScalarLGSSM) = cov(model.model)
 
-function correlate(model::ScalarLGSSM, αs::AbstractVector{<:Real}, f=pick_first_scal)
+function correlate(model::ScalarLGSSM, αs::AbstractVector{<:Real}, f=copy_first_scal)
     αs_vec = reinterpret(SVector{1, eltype(αs)}, αs)
     lml, ys = correlate(model.model, αs_vec, f)
     return lml, ys
 end
 
-function decorrelate(model::ScalarLGSSM, ys::AbstractVector{<:Real}, f=pick_first_scal)
+function decorrelate(model::ScalarLGSSM, ys::AbstractVector{<:Real}, f=copy_first_scal)
     ys_vec = reinterpret(SVector{1, eltype(ys)}, ys)
     lml, αs = decorrelate(model.model, ys_vec, f)
     return lml, αs

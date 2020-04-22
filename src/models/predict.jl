@@ -51,7 +51,8 @@ function predict(
 ) where {T<:Real}
     mp = fill(zero(T), size(mf))
     Pp = fill(zero(T), size(Pf))
-    return predict!(mp, Pp, mf, Pf, A, a, Q)
+    cached_predict! = build_predict!(mf, Pf, A, a, Q)
+    return cached_predict!(mp, Pp, mf, Pf, A, a, Q)
 end
 
 function predict_pullback(
@@ -100,27 +101,52 @@ end
 # `A <: Matrix{<:Real}`.
 #
 
-function predict!(
-    mp::Union{Vector{T}, SubArray{T, 1}},
-    Pp::Union{Matrix{T}, SubArray{T, 2}},
+# function predict!(
+#     mp::Union{Vector{T}, SubArray{T, 1}},
+#     Pp::Union{Matrix{T}, SubArray{T, 2}},
+#     cache::NamedTuple{(:APf,)},
+#     mf::Union{Vector{T}, SubArray{T, 1}},
+#     Pf::Symmetric{T, <:Union{Matrix{T}, SubArray{T, 2}}},
+#     A::Matrix{T},
+#     a::Union{Vector{T}, SubArray{T, 1}},
+#     Q::Matrix{T},
+# ) where {T<:Real}
+
+#     # Compute predictive mean.
+#     mp .= a
+#     mp = mul!(mp, A, mf, one(T), one(T))
+
+#     # Compute predictive covariance.
+#     APf = mul!(cache.APf, A, Pf)
+
+#     Pp .= Q
+#     Pp = mul!(Pp, APf, A', one(T), one(T))
+
+#     return mp, Pp
+# end
+
+function build_predict!(
     mf::Union{Vector{T}, SubArray{T, 1}},
     Pf::Symmetric{T, <:Union{Matrix{T}, SubArray{T, 2}}},
     A::Matrix{T},
     a::Union{Vector{T}, SubArray{T, 1}},
     Q::Matrix{T},
 ) where {T<:Real}
+    APf = Matrix{T}(undef, size(A))
+    function cached_predict!(mp, Pp, mf, Pf, A, a, Q)
+        # Compute predictive mean.
+        mp .= a
+        mp = mul!(mp, A, mf, one(T), one(T))
 
-    # Compute predictive mean.
-    mp .= a
-    mp = mul!(mp, A, mf, one(T), one(T))
+        # Compute predictive covariance.
+        APf = mul!(APf, A, Pf)
 
-    # Compute predictive covariance.
-    APf = mul!(Matrix{T}(undef, size(Pf)), A, Pf)
+        Pp .= Q
+        Pp = mul!(Pp, APf, A', one(T), one(T))
 
-    Pp .= Q
-    Pp = mul!(Pp, APf, A', one(T), one(T))
-
-    return mp, Pp
+        return mp, Pp
+    end
+    return cached_predict!
 end
 
 function predict_pullback_accum!(

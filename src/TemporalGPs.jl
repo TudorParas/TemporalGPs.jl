@@ -23,6 +23,7 @@ module TemporalGPs
     include(joinpath("models", "predict.jl"))
     include(joinpath("models", "lgssm.jl"))
     include(joinpath("models", "lgssm_pullbacks.jl"))
+    include(joinpath("models", "dense_optimisations.jl"))
     include(joinpath("models", "scalar_lgssm.jl"))
 
     # Converting GPs to Linear-Gaussian SSMs.

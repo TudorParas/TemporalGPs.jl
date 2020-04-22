@@ -13,6 +13,10 @@ struct Gaussian{Tm, TP}
     P::TP
 end
 
+dim(x::Gaussian) = length(x.m)
+
+Base.copy(x::Gaussian) = Gaussian(copy(x.m), copy(x.P))
+
 Random.rand(rng::AbstractRNG, x::Gaussian) = vec(rand(rng, x, 1))
 
 function Random.rand(rng::AbstractRNG, x::Gaussian, S::Int)

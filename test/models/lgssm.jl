@@ -31,7 +31,7 @@ println("lgssm:")
         Dobss = [1, 2, 5]
         storages = [
             (name="dense storage", val=DenseStorage()),
-            (name="static storage", val=StaticStorage()),
+            # (name="static storage", val=StaticStorage()),
         ]
 
         @testset "(time_varying=$tv, Dlat=$Dlat, Dobs=$Dobs, $(storage.name))" for
